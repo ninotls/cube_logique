@@ -222,14 +222,14 @@ void loop() {
       string command = tokens[0];
 
       // Parsing all commands
-      if (command == "leds_on_off") {
+      if (command == "leds") {
         for (int i = 1; i < tokens.size(); i++)
           ledSequence.push_back(atoi(tokens[i].c_str()));
         myCube->ledManagement(&ledSequence);
         ledSequence.clear();
         Serial.println("LEDS UPDATED");
         return;
-      } else if (command == "switches_status") {
+      } else if (command == "switches") {
         myCube->getAllSwitchesStatus(switches);
         myCube->displaySwitchesStatus(switches);
         Serial.println("DONE");
