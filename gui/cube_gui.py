@@ -1,21 +1,14 @@
 import wx
-import wx.xrc
-import serial.tools.list_ports
+import cube_commands
+import sys
+import time
 
 
-def _get_all_serial_ports():
-    ports = serial.tools.list_ports.comports()
-    list_all_ports = []
-
-    for port, _, _ in sorted(ports):
-        list_all_ports.append(port)
-
-    return list_all_ports
-
-
-class MyFrame1(wx.Frame):
-
+class CubeFrame(wx.Frame):
     def __init__(self, parent):
+        self.cube_serial = None
+        self.cube_commands = None
+        self.logs = None
         wx.Frame.__init__(self, parent, id=wx.ID_ANY, title=wx.EmptyString, pos=wx.DefaultPosition,
                           size=wx.Size(680, 486), style=wx.DEFAULT_FRAME_STYLE | wx.TAB_TRAVERSAL)
 
@@ -29,7 +22,7 @@ class MyFrame1(wx.Frame):
 
         sb_sizer.Add(self.m_staticText1, 0, wx.ALL, 5)
 
-        m_choice3_choices = _get_all_serial_ports()
+        m_choice3_choices = cube_commands.CubeSerial.get_all_serial_ports()
         self.m_choice3 = wx.Choice(sb_sizer.GetStaticBox(), wx.ID_ANY, wx.DefaultPosition, wx.DefaultSize,
                                    m_choice3_choices, 0)
         self.m_choice3.SetSelection(0)
@@ -88,45 +81,56 @@ class MyFrame1(wx.Frame):
         self.Centre(wx.BOTH)
 
         # Connect Events
-        self.m_button2.Bind(wx.EVT_BUTTON, self.refresh)
-        self.m_button3.Bind(wx.EVT_BUTTON, self.open_serial_port)
+        self.m_button2.Bind(wx.EVT_BUTTON, self.refresh_ports)
+        self.m_button3.Bind(wx.EVT_BUTTON, self.open_port)
         self.m_button4.Bind(wx.EVT_BUTTON, self.send_command)
         self.Bind(wx.EVT_MENU, self.quit, id=self.m_menuItem2.GetId())
-
-    def __del__(self):
-        pass
+        self.Bind(wx.EVT_MENU, self.reset, id=self.m_menuItem1.GetId())
 
     # Virtual event handlers, override them in your derived class
-    def refresh(self, event):
+    def refresh_ports(self, event):
         event.Skip()
-        choices = _get_all_serial_ports()
-        self.m_choice3.Clear()
-        self.m_choice3.Append(choices)
+        ports_list = cube_commands.CubeSerial.get_all_serial_ports()
+        self.update_serial_port(ports_list)
 
-    def open_serial_port(self, event):
+    def open_port(self, event):
         event.Skip()
         port_name = self.m_choice3.GetString(self.m_choice3.GetCurrentSelection())
-        port_baud = "115200"
-        ser = serial.Serial(port_name, port_baud, timeout=0, write_timeout=0)
-        # timeout=0 means "non-blocking," ser.read() will always return, but
-        # may return a null string.
-        self.m_textCtrl2.AppendText(f"opened port {port_name} at {str(port_baud)} baud\n")
-        return ser
+        self.cube_serial = cube_commands.CubeSerial(port_name, 115200)
+        self.m_textCtrl2.AppendText(f"Port Ouvert {port_name}\n")
+        self.cube_commands = cube_commands.HWInterface(self.cube_serial.serial, 0.1, 5)
+        self.cube_commands.register_callback(self.display)
+        self.m_textCtrl2.AppendText(f"Cube Logique ok\n")
 
-    @staticmethod
-    def send_command(event):
+    def display(self, data):
+        res_split = data.split("\n")
+        for data in res_split:
+            self.m_textCtrl2.AppendText(f"Cube: {data}\n")
+
+    def update_serial_port(self, ports_list):
+        self.m_choice3.Clear()
+        self.m_choice3.Append(ports_list)
+
+    def reset(self, event):
         event.Skip()
+        self.send_command(event, cmd="rst")
+
+    def send_command(self, event, cmd=None):
+        event.Skip()
+        self.m_textCtrl2.Clear()
+        if not cmd:
+            cmd = self.m_textCtrl3.GetValue()
+        else:
+            cmd = cmd
+        val = self.cube_commands.parse_command(cmd)
+        if val:
+            self.m_textCtrl2.AppendText(f"Sending command {val.decode('utf-8')}\n")
+            sys.stdout.flush()
+            self.cube_commands.write_hw(val)
+            while "Cube:" not in self.m_textCtrl2.GetValue():
+                time.sleep(0.5)
 
     @staticmethod
     def quit(event):
         event.Skip()
         exit()
-
-
-
-
-app = wx.App(False)
-frame = MyFrame1(None)
-frame.Show(True)
-# start the applications
-app.MainLoop()
