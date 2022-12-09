@@ -2,16 +2,16 @@ from __future__ import print_function
 
 import serial
 import serial.tools.list_ports
-import sys, getopt
+import sys
+import getopt
 import time
 import threading
-#import ows_protocol
 
-#  List of ESP32 commands
-cube_commands = ["swich_led_on", "switch_led_off", "is_switch_off", "is_switch_on"]
+#  List of Cube commands
+cube_commands = ["leds", "switches", "rst"]
+
 
 class GetCubeData(threading.Thread):
-
     def __init__(self, sleep_time, poll_func):
         self.sleep_time = sleep_time
         self.poll_func = poll_func
@@ -26,7 +26,7 @@ class GetCubeData(threading.Thread):
         self.worker()
 
     def worker(self):
-        while (1):
+        while 1:
             if self.run_flag.is_set():
                 self.poll_func()
                 time.sleep(self.sleep_time)
@@ -40,15 +40,15 @@ class GetCubeData(threading.Thread):
         self.run_flag.set()
 
     def running(self):
-        return (self.run_flag.is_set())
+        return self.run_flag.is_set()
 
 
-class HW_Interface(object):
+class HWInterface(object):
 
     def __init__(self, ser, sleep_time, timeout=30):
         self.ser = ser
         self.sleep_time = float(sleep_time)
-        self.worker = GetCubeData(self.sleep_time, self.poll_HW)
+        self.worker = GetCubeData(self.sleep_time, self.poll_hw)
         self.worker.setDaemon(True)
         self.response = None  # last response retrieved by polling
         self.worker.start()
@@ -63,12 +63,12 @@ class HW_Interface(object):
     def kill(self):
         self.worker.kill()
 
-    def write_HW(self, command):
+    def write_hw(self, command):
         """ Send a command to the hardware"""
         self.ser.write(command.rstrip())
         self.ser.flush()
 
-    def poll_HW(self):
+    def poll_hw(self):
         """Called repeatedly by thread. Check for interlock, if OK read HW
         Stores response in self.response, returns a status code, "OK" if so"""
 
@@ -94,6 +94,7 @@ def my_callback(response):
     res_split = response.split("\n")
     for data in res_split:
         print(f"Cube Logique: {data}")
+
 
 def parse_command(command):
     if len(command) == 0:
@@ -122,6 +123,7 @@ def parse_command(command):
 
     return val
 
+
 def get_all_serial_ports():
     ports = serial.tools.list_ports.comports()
     list_all_ports = []
@@ -131,6 +133,7 @@ def get_all_serial_ports():
         list_all_ports.append(tuple((port, desc)))
 
     return list_all_ports
+
 
 def main(argv):
     command = None
@@ -144,7 +147,7 @@ def main(argv):
 
     for opt, arg in opts:
         if opt == '-h':
-            print('sendCommands.pi -c <esp32commands>')
+            print('sendCommands.pi -c <command>')
             print(f'cube_commands are {cube_commands}')
             sys.exit()
         elif opt in ("-c", "--cmd"):
@@ -162,7 +165,7 @@ def main(argv):
     print("opened port " + port_name + " at " + str(port_baud) + " baud")
 
     sys.stdout.flush()
-    hw = HW_Interface(ser, 0.1, 15)
+    hw = HWInterface(ser, 0.1, 15)
 
     # when class gets data from the Arduino, it will call the my_callback function
     hw.register_callback(my_callback)
@@ -173,7 +176,7 @@ def main(argv):
         print("  c <str> to send command <str>")
         print("  x to exit ")
 
-        while (1):
+        while 1:
             sys.stdout.flush()
             cmd = input('--> ')
             cmd = cmd.split()
@@ -195,7 +198,7 @@ def main(argv):
                 print(f"Sending command {val.decode('utf-8', 'ignore')}")
                 sys.stdout.flush()
 
-                hw.write_HW(val)
+                hw.write_hw(val)
 
             elif cmd[0] == 'x':
                 print("Exiting...")
@@ -212,13 +215,14 @@ def main(argv):
             print(f"Sending command {val.decode('utf-8', 'ignore')}")
             sys.stdout.flush()
 
-            hw.write_HW(val)
-            while (hw.timeout > 0):
+            hw.write_hw(val)
+            while hw.timeout > 0:
                 time.sleep(1)
                 hw.timeout -= 1
 
         else:
             print(f"Error parsing command {command}")
+
 
 if __name__ == '__main__':
     main(sys.argv[1:])
