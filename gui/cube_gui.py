@@ -58,7 +58,7 @@ class CubeFrame(wx.Frame):
 
         self.m_textCtrl2 = wx.TextCtrl(sb_sizer.GetStaticBox(), wx.ID_ANY, wx.EmptyString, wx.DefaultPosition,
                                        wx.Size(500, 500),
-                                       wx.HSCROLL | wx.TE_MULTILINE | wx.TE_NO_VSCROLL | wx.TE_READONLY | wx.TE_WORDWRAP)
+                                       wx.HSCROLL | wx.TE_MULTILINE | wx.VSCROLL | wx.TE_READONLY | wx.TE_WORDWRAP)
         sb_sizer.Add(self.m_textCtrl2, 0, wx.ALL, 5)
 
         self.SetSizer(sb_sizer)
@@ -72,9 +72,6 @@ class CubeFrame(wx.Frame):
         self.m_menu1.Append(self.m_menuItem2)
 
         self.m_menubar3.Append(self.m_menu1, u"Outils")
-
-        self.m_menu2 = wx.Menu()
-        self.m_menubar3.Append(self.m_menu2, u"A propos")
 
         self.SetMenuBar(self.m_menubar3)
 
@@ -127,10 +124,8 @@ class CubeFrame(wx.Frame):
             self.m_textCtrl2.AppendText(f"Sending command {val.decode('utf-8')}\n")
             sys.stdout.flush()
             self.cube_commands.write_hw(val)
-            while "Cube:" not in self.m_textCtrl2.GetValue():
-                time.sleep(0.5)
+        self.m_textCtrl3.Clear()
 
-    @staticmethod
-    def quit(event):
+    def quit(self, event):
         event.Skip()
-        exit()
+        self.Destroy()
