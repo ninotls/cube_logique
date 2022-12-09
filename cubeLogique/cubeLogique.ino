@@ -234,6 +234,10 @@ void loop() {
         myCube->displaySwitchesStatus(switches);
         Serial.println("DONE");
         return;
+      } else if (command == "rst") {
+        ESP.reset();
+        Serial.println("DONE");
+        return;
       } else
         Serial.println("Unknown command");
     }

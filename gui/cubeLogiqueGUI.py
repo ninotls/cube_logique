@@ -123,6 +123,8 @@ class MyFrame1(wx.Frame):
         exit()
 
 
+
+
 app = wx.App(False)
 frame = MyFrame1(None)
 frame.Show(True)
